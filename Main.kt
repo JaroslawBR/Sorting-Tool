@@ -1,11 +1,17 @@
 package sorting
+import java.io.File
 import java.util.InputMismatchException
 import java.util.Scanner
 import kotlin.system.exitProcess
+var fileInputName =""
+var fileOutputName =""
+var InputType = 0
+var OutputType = 0
 
 val typeList  = listOf(
     listOf("-sortingType", "natural", "byCount"),
-    listOf("-dataType", "long", "line", "word")
+    listOf("-dataType", "long", "line", "word"),
+    listOf("-inputFile", "-outputFile")
 )
 
 fun checkArgs(args: Array<String>, typeList: List<List<String>>) {
@@ -13,7 +19,7 @@ fun checkArgs(args: Array<String>, typeList: List<List<String>>) {
         if (args.indexOf(typeList[0][0]) + 1 < args.size) {
             for (i in 1..2) {
                 if (args[(args.indexOf(typeList[0][0]) + 1)] == typeList[0][i]) break
-                if (i == 2) {
+                if (i == typeList[0].lastIndex) {
                     println("No sorting type defined!")
                     exitProcess(0)
                 }
@@ -25,9 +31,9 @@ fun checkArgs(args: Array<String>, typeList: List<List<String>>) {
     }
     if (args.contains(typeList[1][0])) {
         if (args.indexOf(typeList[1][0]) + 1 < args.size) {
-            for (i in 0..2) {
-                if (args[(args.indexOf(typeList[1][0]) + 1)] == typeList[1][i+1]) break
-                if (i == 2) {
+            for (i in 1..3) {
+                if (args[(args.indexOf(typeList[1][0]) + 1)] == typeList[1][i]) break
+                if (i == typeList[1].lastIndex) {
                     println("No data type defined!")
                     exitProcess(0)
                 }
@@ -37,13 +43,34 @@ fun checkArgs(args: Array<String>, typeList: List<List<String>>) {
             exitProcess(0)
         }
     }
-    val wrongArgs = args.filterNot { typeList.flatten().contains(it) }
+    if (args.contains(typeList[2][0])) {
+        try {
+            fileInputName = (args[(args.indexOf(typeList[2][0]) + 1)])
+            InputType = 1
+        } catch (e: IndexOutOfBoundsException) {
+            println("No input file name defined!")
+            exitProcess(0)}
+
+    }
+    if (args.contains(typeList[2][1])) {
+        try {
+            fileOutputName = (args[(args.indexOf(typeList[2][1]) + 1)])
+            OutputType = 1
+        } catch (e: IndexOutOfBoundsException) {
+            println("No output file name defined!")
+            exitProcess(0)}
+
+    }
+    val wrongArgs = args.filterNot { typeList.flatten().contains(it) }.toMutableList()
     if (wrongArgs.isEmpty()) return else {
+        wrongArgs.remove(fileInputName)
+        wrongArgs.remove(fileOutputName)
         for (i in wrongArgs) {
             println("\"$i\" is not a valid parameter. It will be skipped.")
         }
     }
 }
+
 fun main(args: Array<String> = arrayOf()) {
     checkArgs(args, typeList)
     val scanner = Scanner(System.`in`)
@@ -61,32 +88,58 @@ fun main(args: Array<String> = arrayOf()) {
 
 fun inputLine(scanner: Scanner): MutableList<String> {
     val lineList: MutableList<String> = mutableListOf()
-    while (scanner.hasNext()) {
-        val line = scanner.nextLine()
-        lineList.add(line)
+    if (InputType != 1) {
+        while (scanner.hasNext()) {
+            val line = scanner.nextLine()
+            lineList.add(line)
+        }
+        scanner.close()
+        return lineList
+    } else {
+        val fileInput = File(fileInputName).readLines()
+            lineList.addAll(fileInput)
+        }
+        scanner.close()
+        return lineList
     }
-    scanner.close()
-    return lineList
-}
 
-fun inputWord(scanner: Scanner): MutableList<String> {
+fun inputWord(scanner: Scanner = Scanner(System.`in`)): MutableList<String> {
     val wordList: MutableList<String> = mutableListOf()
+    if (InputType != 1) {
     while (scanner.hasNext()) {
         val input = scanner.next()
         wordList.add(input)
     }
+    }
+    else {
+        val fileInput = File(fileInputName).readLines().flatMap { it.split(" ") }.filter { it.isNotBlank() }
+        wordList.addAll(fileInput)
+        println(fileInput)
+        }
     scanner.close()
     return wordList
 }
 
-fun inputNumbers (scanner: Scanner): MutableList<Int> {
+fun inputNumbers (scanner: Scanner = Scanner(System.`in`)): MutableList<Int> {
     val wrongInputList: MutableList<String> = mutableListOf()
     val numberList: MutableList<Int> = mutableListOf()
-    while (scanner.hasNext()) {
-        try {
-            val input = scanner.nextInt()
-            numberList.add(input)
-        } catch (e: InputMismatchException) { wrongInputList.add(scanner.next()) }
+    if (InputType != 1) {
+        while (scanner.hasNext()) {
+            try {
+                val input = scanner.nextInt()
+                numberList.add(input)
+            } catch (e: InputMismatchException) {
+                wrongInputList.add(scanner.next())
+            }
+        }
+
+    } else {
+            val fileInput = File(fileInputName).readLines().flatMap { it.split(" ") }.filter { it.isNotBlank() }
+            for (i in fileInput) {
+                try {
+                    numberList.add(i.toInt())
+                } catch (e: Exception) { wrongInputList.add(i) }
+            }
     }
     if (wrongInputList.isNotEmpty()) {
         for (i in wrongInputList) {
@@ -100,11 +153,18 @@ fun inputNumbers (scanner: Scanner): MutableList<Int> {
 
 fun natural(args: Array<String> = arrayOf(), sortedList: List<String>) {
     if (args.contains("line")) {
-        println("Sorted data:")
-        println(sortedList.joinToString("\n"))
-    }
-    else {
-        println("Sorted data: ${sortedList.joinToString(" ")}")
+        if (OutputType != 1) {
+            println("Sorted data:")
+            println(sortedList.joinToString("\n"))
+        } else {
+            File(fileOutputName).appendText("\nSorted data:")
+            File(fileOutputName).appendText(sortedList.joinToString("\n"))
+        }
+    } else {
+        if (OutputType != 1) {
+            println("Sorted data: ${sortedList.joinToString(" ")}")
+        } else File(fileOutputName).appendText("\nSorted data: ${sortedList.joinToString(" ")}")
+
     }
 }
 
@@ -112,17 +172,23 @@ fun sorting(stringList: MutableList<String>, numberList: MutableList<Int>, args:
     if (numberList.isNotEmpty()) {
         val sortedListInt = numberList.sorted()
         val sortedList = sortedListInt.map { it.toString() }
-        println("Total numbers: ${sortedListInt.size}.")
+        if (OutputType != 1) {
+            println("Total numbers: ${sortedListInt.size}.")
+        } else File(fileOutputName).writeText("Total numbers: ${sortedListInt.size}.")
         if (args.contains("byCount")) byCount(sortedList) else natural(args, sortedList)
         }
     if (stringList.isNotEmpty() && !args.contains("line")) {
         val sortedList = stringList.sorted()
-        println("Total words: ${sortedList.size}.")
+        if (OutputType != 1) {
+            println("Total words: ${sortedList.size}.")
+        } else File(fileOutputName).writeText("Total words: ${sortedList.size}.")
         if (args.contains("byCount")) byCount(sortedList) else natural(args, sortedList)
         }
     if (stringList.isNotEmpty() && args.contains("line")) {
         val sortedList = stringList.sortedBy { it.length }
-        println("Total lines: ${sortedList.size}.")
+        if (OutputType != 1) {
+            println("Total lines: ${sortedList.size}.")
+        } else File(fileOutputName).writeText("Total lines: ${sortedList.size}.")
         if (args.contains("byCount")) byCount(sortedList, args) else natural(args, sortedList)
         }
 }
@@ -141,7 +207,9 @@ fun byCount(sortedList: List<String> = listOf(), args: Array<String> = arrayOf()
         val sortedMap = mapList.toList().sortedBy { it.second }.toMap()
         for ((number, times) in sortedMap) {
             val percent = (times.toDouble() / sortedList.size.toDouble() * 100).toInt()
-            println("${number}: $times time(s), ${percent}%")
+            if (OutputType != 1) {
+                println("${number}: $times time(s), ${percent}%")
+            } else File(fileOutputName).appendText("\n${number}: $times time(s), ${percent}%")
         }
     } else {
         val listCount = mapList
@@ -150,11 +218,14 @@ fun byCount(sortedList: List<String> = listOf(), args: Array<String> = arrayOf()
             .toMap()
         for ((key, value) in listCount) {
             val percent = (value.toDouble() / sortedList.size.toDouble() * 100).toInt()
-            println("$key: $value time(s), $percent%")
-
+            if (OutputType != 1) {
+                println("$key: $value time(s), $percent%")
+            } else File(fileOutputName).appendText("\n$key: $value time(s), $percent%")
         }
     }
 }
+
+
 /*
 fun storting(scanner: Scanner) {
     val numberList: MutableList<Int> = mutableListOf()
